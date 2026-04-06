@@ -1,4 +1,4 @@
-module multiplier_control_refinado (
+module multiplier_control (
     input  logic clk,
     input  logic rst_n,
 
@@ -9,6 +9,7 @@ module multiplier_control_refinado (
     output logic compute_en
 );
 
+    // estados da FSM
     typedef enum logic [1:0] {
         IDLE,
         LOAD,
@@ -18,8 +19,10 @@ module multiplier_control_refinado (
 
     state_t state, next_state;
 
+    // contador de iteracoes
     logic [5:0] count;
 
+    // registrador de estado
     always_ff @(posedge clk or negedge rst_n) begin
         if (!rst_n)
             state <= IDLE;
@@ -27,19 +30,21 @@ module multiplier_control_refinado (
             state <= next_state;
     end
 
+    // contador de iteracoes
     always_ff @(posedge clk or negedge rst_n) begin
-        if (!rst_n) begin
+        if (!rst_n)
             count <= 6'd0;
-        end else begin
+        else begin
             case (state)
                 IDLE:    count <= 6'd0;
                 LOAD:    count <= 6'd0;
-                COMPUTE: count <= count + 1;
+                COMPUTE: count <= count + 1; // avanca para o proximo bit (shift)
                 default: count <= count;
             endcase
         end
     end
 
+    // logica de proximo estado
     always_comb begin
         next_state = state;
 
@@ -54,7 +59,7 @@ module multiplier_control_refinado (
             end
 
             COMPUTE: begin
-                if (count == 6'd31)
+                if (count == 6'd31) // apos processar 32 bits
                     next_state = DONE;
             end
 
@@ -65,6 +70,7 @@ module multiplier_control_refinado (
         endcase
     end
 
+    // saidas da FSM
     always_comb begin
         load       = 1'b0;
         compute_en = 1'b0;
@@ -72,15 +78,19 @@ module multiplier_control_refinado (
 
         case (state)
             LOAD: begin
-                load = 1'b1;
+                load = 1'b1; // carrega multiplicando e multiplicador no datapath
             end
 
             COMPUTE: begin
-                compute_en = 1'b1;
+                compute_en = 1'b1; 
+                // executa em 1 ciclo:
+                // testa o bit LSB atual (product[0])
+                // soma se necessario
+                // shift a direita = pula para o proximo bit do multiplicador
             end
 
             DONE: begin
-                done = 1'b1;
+                done = 1'b1; // resultado final
             end
         endcase
     end
